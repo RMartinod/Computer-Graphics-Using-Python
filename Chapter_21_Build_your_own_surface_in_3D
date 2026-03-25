@@ -1,0 +1,35 @@
+import numpy as np, plotly.graph_objects as go, time
+i, j = np.linspace(-2*np.pi/3,2*np.pi/3,8), np.linspace(-4*np.pi/5,4*np.pi/5,8)
+I, J = np.meshgrid(i,j)
+X = np.cos(2*np.pi/3)*np.sinh(I)*np.sin(J) + np.sin(2*np.pi/3)*np.cosh(I)*np.cos(J)
+Y =-np.cos(2*np.pi/3)*np.sinh(I)*np.cos(J) + np.sin(2*np.pi/3)*np.cosh(I)*np.sin(J)
+Z = J*np.cos(2*np.pi/3) + I*np.sin(2*np.pi/3)
+pxu0, pyu0, pzu0 = X[:,0].reshape(-1,1), Y[:,0].reshape(-1,1), Z[:,0].reshape(-1,1)
+pxuend, pyuend, pzuend = X[:,-1].reshape(-1,1), Y[:,-1].reshape(-1,1), Z[:,-1].reshape(-1,1)
+X, Y, Z = np.concatenate((pxu0,X,pxuend),axis=1), np.concatenate((pyu0,Y,pyuend),axis=1), np.concatenate((pzu0,Z,pzuend),axis=1)
+pxv0, pyv0, pzv0 = X[0,:].reshape(1,-1), Y[0,:].reshape(1,-1), Z[0,:].reshape(1,-1)
+pxvend, pyvend, pzvend = X[-1,:].reshape(1,-1), Y[-1,:].reshape(1,-1), Z[-1,:].reshape(1,-1)
+X, Y, Z = np.concatenate((pxv0,X,pxvend)), np.concatenate((pyv0,Y,pyvend)), np.concatenate((pzv0,Z,pzvend))
+u  = np.transpose(np.linspace(0,1,10).reshape(1, -1))
+v  = np.transpose(np.linspace(0,1,10).reshape(1, -1))
+Un = np.concatenate((u**3,u**2,u,np.ones(np.shape(u))),axis=1)
+Vm = np.concatenate((v**3,v**2,v,np.ones(np.shape(v))),axis=1)
+Mn = (1/2)*np.array([[-1, 3,-3, 1], [ 2,-5, 4,-1], [-1, 0, 1, 0], [ 0, 2, 0, 0]]) #catmull-Rom
+Mm = (1/6)*np.array([[-1, 3,-3, 1], [ 3,-6, 3, 0], [-3, 0, 3, 0], [ 1, 4, 1, 0]]) #spline
+n, m = X.shape
+px = np.zeros((len(u)*(n-len(Mn)+1), len(v)*(m-len(Mm)+1)))
+py = np.zeros((len(u)*(n-len(Mn)+1), len(v)*(m-len(Mm)+1)))
+pz = np.zeros((len(u)*(n-len(Mn)+1), len(v)*(m-len(Mm)+1)))
+for i in range(n-len(Mn)+1):
+  for j in range(m-len(Mm)+1):
+    XStage = X[i:i+len(Mn),j:j+len(Mm)]
+    YStage = Y[i:i+len(Mn),j:j+len(Mm)]
+    ZStage = Z[i:i+len(Mn),j:j+len(Mm)]
+    pxStage = Un @ Mn @ XStage @ np.transpose(Mm) @ np.transpose(Vm)
+    pyStage = Un @ Mn @ YStage @ np.transpose(Mm) @ np.transpose(Vm)
+    pzStage = Un @ Mn @ ZStage @ np.transpose(Mm) @ np.transpose(Vm)
+    px[len(u)*i:len(u)*(i+1),len(v)*j:len(v)*(j+1)]  = pxStage[:,:]
+    py[len(u)*i:len(u)*(i+1),len(v)*j:len(v)*(j+1)]  = pyStage[:,:]
+    pz[len(u)*i:len(u)*(i+1),len(v)*j:len(v)*(j+1)]  = pzStage[:,:]
+fig = go.Figure(go.Surface(x=px,y=py,z=pz,opacity=1,colorscale='solar'))
+fig.update_layout(scene = dict(aspectratio = dict(x=1, y=1, z=1)))
